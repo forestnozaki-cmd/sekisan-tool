@@ -8,6 +8,7 @@ import ezdxf
 import warnings
 import io
 import os
+import tempfile
 from collections import defaultdict
 
 warnings.filterwarnings("ignore")
@@ -23,14 +24,38 @@ Y_NAMES = ['1','2','3','4','5','6','7','8','9','10','11','12']
 SOLID_TOL = 50
 
 # ============================================================
-# 共通関数
+# DXF読み込み（JW_CAD CP932対応）
 # ============================================================
 def read_dxf(uploaded_file):
+    """
+    StreamlitのUploadedFileからezdxfのModelspaceを返す。
+    JW_CADのDXFはCP932(Shift-JIS)のため StringIO で読む。
+    失敗した場合は一時ファイル経由で再試行する。
+    """
     data = uploaded_file.read()
-    stream = io.BytesIO(data)
-    doc = ezdxf.read(stream)
-    return doc.modelspace()
 
+    # 方法1: CP932でデコードしてStringIOで読む
+    try:
+        text = data.decode("cp932")
+        doc = ezdxf.read(io.StringIO(text))
+        return doc.modelspace()
+    except Exception:
+        pass
+
+    # 方法2: 一時ファイル経由（フォールバック）
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".dxf", delete=False) as tmp:
+            tmp.write(data)
+            tmp_path = tmp.name
+        doc = ezdxf.readfile(tmp_path)
+        os.unlink(tmp_path)
+        return doc.modelspace()
+    except Exception as e:
+        raise RuntimeError("DXFの読み込みに失敗しました: " + str(e))
+
+# ============================================================
+# 共通関数
+# ============================================================
 def get_grid(msp):
     gh = set(); gv = set()
     for e in msp:
@@ -205,7 +230,7 @@ tab_b, tab_c = st.tabs(["B：土台・大引き", "C：床束・M12アンカー"
 
 # ---- タブB ----
 with tab_b:
-    st.header("B：土台・大引き集計")
+    st.header("B：土台・大引きまとめ")
     st.info("1階床伏図のDXFファイルをアップロードしてください。")
     file_b = st.file_uploader("DXFファイルを選択", type=["dxf","DXF"], key="b")
     if file_b:
@@ -230,7 +255,6 @@ with tab_b:
                     st.metric("大引き", str(len(or_))+"本",
                               str(round(sum(r[2] for r in or_)/1000,3))+"m")
 
-                # 4m材集計
                 d_bins = ffd([r[2] for r in dr])
                 o_bins = ffd([r[2] for r in or_])
                 kd = round((DODAI_SECTION[0]/1000)*(DODAI_SECTION[1]/1000)*4.0*len(d_bins),5)
