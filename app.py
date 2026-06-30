@@ -29,29 +29,24 @@ SOLID_TOL = 50
 def read_dxf(uploaded_file):
     """
     StreamlitのUploadedFileからezdxfのModelspaceを返す。
-    JW_CADのDXFはCP932(Shift-JIS)のため StringIO で読む。
-    失敗した場合は一時ファイル経由で再試行する。
+    ezdxf.read()(StringIO経由)はJW_CAD出力DXFで内部的に
+    エンティティを取得できないケースがあるため、
+    一時ファイルに書き出してezdxf.readfile()で読み込む
+    （最も確実な方法）。
     """
     data = uploaded_file.read()
-
-    # 方法1: CP932でデコードしてStringIOで読む
-    try:
-        text = data.decode("cp932")
-        doc = ezdxf.read(io.StringIO(text))
-        return doc.modelspace()
-    except Exception:
-        pass
-
-    # 方法2: 一時ファイル経由（フォールバック）
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".dxf", delete=False) as tmp:
             tmp.write(data)
             tmp_path = tmp.name
         doc = ezdxf.readfile(tmp_path)
-        os.unlink(tmp_path)
         return doc.modelspace()
     except Exception as e:
         raise RuntimeError("DXFの読み込みに失敗しました: " + str(e))
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 # ============================================================
 # 共通関数
