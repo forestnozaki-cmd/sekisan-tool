@@ -1,2 +1,2 @@
-# sekisan-tool
+# ホームズ構造解析-tool
 ホームズ構造PDF解析
