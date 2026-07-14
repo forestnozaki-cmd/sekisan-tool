@@ -149,6 +149,7 @@ def make_csv_B(dodai_r, ohiki_r):
     kd = calc_kasadaka(dodai_r, *DODAI_SECTION)
     ko = calc_kasadaka(ohiki_r,  *OHIKI_SECTION)
 
+    lines.append("#土台・大引き")
     lines.append("番号,明細1,明細2,数量,単位")
     lines.append("1,土台,"+str(DODAI_SECTION[0])+"x"+str(DODAI_SECTION[1])+"mm,"+str(kd)+",m3")
     lines.append("2,大引き,"+str(OHIKI_SECTION[0])+"x"+str(OHIKI_SECTION[1])+"mm,"+str(ko)+",m3")
@@ -183,6 +184,7 @@ def count_m12(msp):
 
 def make_csv_C(yuka, m12):
     lines=[]
+    lines.append("#床束・M12")
     lines.append("番号,明細1,明細2,数量,単位")
     lines.append("1,床束,,"+str(len(yuka))+",箇所")
     lines.append("2,M12アンカーボルト,,"+str(len(m12))+",本")
@@ -216,31 +218,9 @@ with tab_b:
                 or_ = process_members(o_segs, gx_ext, gy_ext)
 
                 st.success("解析完了！")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("土台", str(len(dr))+"本",
-                              str(round(sum(r[2] for r in dr)/1000,3))+"m")
-                with col2:
-                    st.metric("大引き", str(len(or_))+"本",
-                              str(round(sum(r[2] for r in or_)/1000,3))+"m")
-
-                import math, pandas as pd
-                d_bins = ffd([r[2] for r in dr])
-                o_bins = ffd([r[2] for r in or_])
-                kd = math.ceil((DODAI_SECTION[0]/1000)*(DODAI_SECTION[1]/1000)*4.0*len(d_bins)*100)/100
-                ko = math.ceil((OHIKI_SECTION[0]/1000)*(OHIKI_SECTION[1]/1000)*4.0*len(o_bins)*100)/100
-
-                st.subheader("集計結果")
-                df = pd.DataFrame([
-                    ["1","土台","105x105mm",kd,"m3"],
-                    ["2","大引き","90x90mm",ko,"m3"],
-                ], columns=["番号","明細1","明細2","数量","単位"])
-                st.dataframe(df, hide_index=True, use_container_width=True)
-
                 csv = make_csv_B(dr, or_)
-                fname = os.path.splitext(file_b.name)[0]+"_土台大引き.csv"
-                st.download_button("📥 CSVダウンロード", csv.encode("utf-8-sig"),
-                                   file_name=fname, mime="text/csv")
+                st.subheader("集計結果")
+                st.code(csv, language="csv")
             except Exception as ex:
                 st.error("エラーが発生しました: "+str(ex))
 
@@ -257,16 +237,9 @@ with tab_c:
                 m12  = count_m12(msp)
 
                 st.success("解析完了！")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("床束", str(len(yuka))+"箇所")
-                with col2:
-                    st.metric("M12アンカーボルト", str(len(m12))+"本")
-
                 csv = make_csv_C(yuka, m12)
-                fname = os.path.splitext(file_c.name)[0]+"_床束アンカー.csv"
-                st.download_button("📥 CSVダウンロード", csv.encode("utf-8-sig"),
-                                   file_name=fname, mime="text/csv")
+                st.subheader("集計結果")
+                st.code(csv, language="csv")
             except Exception as ex:
                 st.error("エラーが発生しました: "+str(ex))
 
