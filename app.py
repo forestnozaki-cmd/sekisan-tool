@@ -151,8 +151,8 @@ def make_csv_B(dodai_r, ohiki_r):
 
     lines.append("#土台・大引き")
     lines.append("番号,明細1,明細2,数量,単位")
-    lines.append("1,土台,"+str(DODAI_SECTION[0])+"x"+str(DODAI_SECTION[1])+"mm,"+str(kd)+",m3")
-    lines.append("2,大引き,"+str(OHIKI_SECTION[0])+"x"+str(OHIKI_SECTION[1])+"mm,"+str(ko)+",m3")
+    lines.append("1,土台,4000×105×105 桧 KD,"+str(kd)+",m3")
+    lines.append("2,大引き,4000×90×90 米松 KD,"+str(ko)+",m3")
     return "\n".join(lines)
 
 # ============================================================
@@ -182,12 +182,21 @@ def count_m12(msp):
             anchors.append((round(e.dxf.center.x), round(e.dxf.center.y)))
     return anchors
 
-def make_csv_C(yuka, m12):
+def count_m16(msp):
+    """M16アンカーボルト: 三角形3本のLINEで1個を表す → LINE数÷3"""
+    count=0
+    for e in msp:
+        if e.dxf.layer=="AnchorBolt_M16" and e.dxftype()=="LINE":
+            count+=1
+    return count // 3
+
+def make_csv_C(yuka, m12, m16):
     lines=[]
     lines.append("#床束・M12")
     lines.append("番号,明細1,明細2,数量,単位")
     lines.append("1,床束,,"+str(len(yuka))+",箇所")
-    lines.append("2,M12アンカーボルト,,"+str(len(m12))+",本")
+    lines.append("2,M12アンカーボルト,M12×360,"+str(len(m12))+",本")
+    lines.append("3,M16アンカーボルト,M16×800,"+str(m16)+",本")
     return "\n".join(lines)
 
 # ============================================================
@@ -235,9 +244,10 @@ with tab_c:
                 msp = read_dxf(file_c)
                 yuka = count_yukaduka(msp)
                 m12  = count_m12(msp)
+                m16  = count_m16(msp)
 
                 st.success("解析完了！")
-                csv = make_csv_C(yuka, m12)
+                csv = make_csv_C(yuka, m12, m16)
                 st.subheader("集計結果")
                 st.code(csv, language="csv")
             except Exception as ex:
