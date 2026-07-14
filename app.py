@@ -136,37 +136,22 @@ def process_members(segs, gx_ext, gy_ext):
     return results
 
 def make_csv_B(dodai_r, ohiki_r):
+    import math
     lines=[]
-    def write(results, label, sw, sh):
-        lines.append("# "+label+" "+str(sw)+"x"+str(sh)+"mm")
-        lines.append("番号,通り,区間,スパン(m),継手")
-        total=0
-        for i,(t,p,span,sp) in enumerate(results,1):
-            lines.append(str(i)+","+t+","+p+","+str(round(span/1000,3))+","+(  "★" if sp else ""))
-            total+=span
-        lines.append("合計,,,"+str(round(total/1000,3))+",")
-        lines.append("")
-        lines.append("# "+label+" 4m材割付")
-        lines.append("材番,内訳(mm),使用mm,端材mm")
-        bins=ffd([r[2] for r in results]); wt=0
-        for i,b in enumerate(bins,1):
-            used=sum(b); waste=MAT_LEN-used; wt+=waste
-            lines.append(str(i)+","+"+".join(str(x) for x in sorted(b,reverse=True))+","+str(used)+","+str(waste))
-        n=len(bins); k=round((sw/1000)*(sh/1000)*4.0*n,5)
-        lines.append("合計,,"+str(n*MAT_LEN)+","+str(wt))
-        lines.append("")
-        lines.append("# "+label+" 嵩高さ")
-        lines.append("部材,断面,4m材本数,嵩高さ(m3)")
-        lines.append(label+","+str(sw)+"x"+str(sh)+"mm,"+str(n)+","+str(k))
-        lines.append("")
-        return n,k
-    nd,kd=write(dodai_r,"土台",*DODAI_SECTION)
-    no,ko=write(ohiki_r,"大引き",*OHIKI_SECTION)
-    lines.append("# 総集計")
-    lines.append("部材,断面,4m材本数,嵩高さ(m3)")
-    lines.append("土台,"+str(DODAI_SECTION[0])+"x"+str(DODAI_SECTION[1])+"mm,"+str(nd)+","+str(kd))
-    lines.append("大引き,"+str(OHIKI_SECTION[0])+"x"+str(OHIKI_SECTION[1])+"mm,"+str(no)+","+str(ko))
-    lines.append("合計,,"+str(nd+no)+","+str(round(kd+ko,5)))
+    def calc_kasadaka(results, sw, sh):
+        bins=ffd([r[2] for r in results])
+        n=len(bins)
+        k=round((sw/1000)*(sh/1000)*4.0*n, 5)
+        # 小数第三位切上・小数第二位表示
+        k_ceil = math.ceil(k * 100) / 100
+        return k_ceil
+
+    kd = calc_kasadaka(dodai_r, *DODAI_SECTION)
+    ko = calc_kasadaka(ohiki_r,  *OHIKI_SECTION)
+
+    lines.append("番号,明細1,明細2,数量,単位")
+    lines.append("1,土台,"+str(DODAI_SECTION[0])+"x"+str(DODAI_SECTION[1])+"mm,"+str(kd)+",m3")
+    lines.append("2,大引き,"+str(OHIKI_SECTION[0])+"x"+str(OHIKI_SECTION[1])+"mm,"+str(ko)+",m3")
     return "\n".join(lines)
 
 # ============================================================
@@ -198,20 +183,9 @@ def count_m12(msp):
 
 def make_csv_C(yuka, m12):
     lines=[]
-    lines.append("# 集計結果")
-    lines.append("部材,数量,単位")
-    lines.append("床束,"+str(len(yuka))+",箇所")
-    lines.append("M12アンカーボルト,"+str(len(m12))+",本")
-    lines.append("")
-    lines.append("# 床束ユニーク位置一覧")
-    lines.append("番号,X座標,Y座標")
-    for i,(x,y) in enumerate(sorted(yuka,key=lambda p:(p[1],p[0])),1):
-        lines.append(str(i)+","+str(x)+","+str(y))
-    lines.append("")
-    lines.append("# M12アンカーボルト座標一覧")
-    lines.append("番号,X座標,Y座標")
-    for i,(x,y) in enumerate(sorted(m12,key=lambda p:(p[1],p[0])),1):
-        lines.append(str(i)+","+str(x)+","+str(y))
+    lines.append("番号,明細1,明細2,数量,単位")
+    lines.append("1,床束,,"+str(len(yuka))+",箇所")
+    lines.append("2,M12アンカーボルト,,"+str(len(m12))+",本")
     return "\n".join(lines)
 
 # ============================================================
@@ -250,18 +224,17 @@ with tab_b:
                     st.metric("大引き", str(len(or_))+"本",
                               str(round(sum(r[2] for r in or_)/1000,3))+"m")
 
+                import math, pandas as pd
                 d_bins = ffd([r[2] for r in dr])
                 o_bins = ffd([r[2] for r in or_])
-                kd = round((DODAI_SECTION[0]/1000)*(DODAI_SECTION[1]/1000)*4.0*len(d_bins),5)
-                ko = round((OHIKI_SECTION[0]/1000)*(OHIKI_SECTION[1]/1000)*4.0*len(o_bins),5)
+                kd = math.ceil((DODAI_SECTION[0]/1000)*(DODAI_SECTION[1]/1000)*4.0*len(d_bins)*100)/100
+                ko = math.ceil((OHIKI_SECTION[0]/1000)*(OHIKI_SECTION[1]/1000)*4.0*len(o_bins)*100)/100
 
-                st.subheader("4m材・嵩高さ集計")
-                import pandas as pd
+                st.subheader("集計結果")
                 df = pd.DataFrame([
-                    ["土台","105×105mm",len(d_bins),kd],
-                    ["大引き","90×90mm",len(o_bins),ko],
-                    ["合計","",len(d_bins)+len(o_bins),round(kd+ko,5)],
-                ], columns=["部材","断面","4m材本数","嵩高さ(m3)"])
+                    ["1","土台","105x105mm",kd,"m3"],
+                    ["2","大引き","90x90mm",ko,"m3"],
+                ], columns=["番号","明細1","明細2","数量","単位"])
                 st.dataframe(df, hide_index=True, use_container_width=True)
 
                 csv = make_csv_B(dr, or_)
