@@ -1,7 +1,7 @@
 """
 構造材積算ツール - Streamlit Webアプリ
 B: 土台・大引き集計
-C: 床束・M12アンカーボルト集計
+C: 床束・アンカーボルト集計
 """
 import streamlit as st
 import ezdxf
@@ -192,10 +192,10 @@ def count_m16(msp):
 
 def make_csv_C(yuka, m12, m16):
     lines=[]
-    lines.append("#床束・M12")
+    lines.append("#床束・アンカー")
     lines.append("番号,明細1,明細2,数量,単位")
     lines.append("1,床束,,"+str(len(yuka))+",箇所")
-    lines.append("2,M12アンカーボルト,M12×360,"+str(len(m12))+",本")
+    lines.append("2,M12アンカーボルト,M12×360ザボレス,"+str(len(m12))+",本")
     lines.append("3,M16アンカーボルト,M16×800,"+str(m16)+",本")
     return "\n".join(lines)
 
